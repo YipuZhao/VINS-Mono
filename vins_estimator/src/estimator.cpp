@@ -33,7 +33,9 @@ void Estimator::clearState()
         angular_velocity_buf[i].clear();
 
         if (pre_integrations[i] != nullptr)
+        {
             delete pre_integrations[i];
+        }
         pre_integrations[i] = nullptr;
     }
 
@@ -42,13 +44,13 @@ void Estimator::clearState()
         tic[i] = Vector3d::Zero();
         ric[i] = Matrix3d::Identity();
     }
-
+    
     for (auto &it : all_image_frame)
     {
-        if (it.second.pre_integration != nullptr)
+        if (it.second.pre_integration != NULL)
         {
             delete it.second.pre_integration;
-            it.second.pre_integration = nullptr;
+            it.second.pre_integration = NULL;
         }
     }
 
@@ -1007,7 +1009,6 @@ void Estimator::slideWindow()
     TicToc t_margin;
     if (marginalization_flag == MARGIN_OLD)
     {
-        double t_0 = Headers[0].stamp.toSec();
         back_R0 = Rs[0];
         back_P0 = Ps[0];
         if (frame_count == WINDOW_SIZE)
@@ -1044,20 +1045,16 @@ void Estimator::slideWindow()
 
             if (true || solver_flag == INITIAL)
             {
+                double t_0 = Headers[0].stamp.toSec();
                 map<double, ImageFrame>::iterator it_0;
                 it_0 = all_image_frame.find(t_0);
                 delete it_0->second.pre_integration;
-                it_0->second.pre_integration = nullptr;
- 
                 for (map<double, ImageFrame>::iterator it = all_image_frame.begin(); it != it_0; ++it)
                 {
-                    if (it->second.pre_integration)
-                        delete it->second.pre_integration;
+                    delete it->second.pre_integration;
                     it->second.pre_integration = NULL;
                 }
-
                 all_image_frame.erase(all_image_frame.begin(), it_0);
-                all_image_frame.erase(t_0);
 
             }
             slideWindowOld();

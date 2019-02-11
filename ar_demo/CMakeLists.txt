@@ -16,7 +16,13 @@ find_package(catkin REQUIRED COMPONENTS
   message_filters
   camera_model
 )
+
+
+set(OpenCV_DIR /opt/opencv3/share/OpenCV)
 find_package(OpenCV REQUIRED)
+
+set(Ceres_DIR /opt/ceres/lib/cmake/Ceres)
+find_package(Ceres REQUIRED)
 
 catkin_package(
 
@@ -25,6 +31,7 @@ catkin_package(
 
 include_directories(
   ${catkin_INCLUDE_DIRS}
+  ${CERES_INCLUDE_DIRS}
 )
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
@@ -32,12 +39,13 @@ find_package(Eigen3)
 include_directories(
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
+  ${CERES_INCLUDE_DIRS}
 )
 
 add_executable(ar_demo_node src/ar_demo_node.cpp)
 
  target_link_libraries(ar_demo_node
-   ${catkin_LIBRARIES} ${OpenCV_LIBS}
+   ${catkin_LIBRARIES} ${OpenCV_LIBS} ${CERES_LIBRARIES}
  )
 
 

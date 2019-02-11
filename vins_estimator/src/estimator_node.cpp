@@ -13,6 +13,95 @@
 #include "utility/visualization.h"
 
 
+
+class timeLog {
+public:
+  timeLog(const double &timeStamp_, const double &timeCost_1, const double &timeCost_2) {
+    time_stamp = timeStamp_;
+    time_cost_1 = timeCost_1;
+    time_cost_2 = timeCost_2;
+  };
+
+  double time_stamp;
+  double time_cost_1;
+  double time_cost_2;
+};
+
+class trackLog {
+public:
+  trackLog(const double &timeStamp_, const double &Tx_, const double &Ty_, const double &Tz_, 
+	   const double &Qx_, const double &Qy_, const double &Qz_, const double &Qw_) {
+    //
+    time_stamp = timeStamp_;
+    position(0) = Tx_;
+    position(1) = Ty_;
+    position(2) = Tz_;
+    orientation(0) = Qx_;
+    orientation(1) = Qy_;
+    orientation(2) = Qz_;
+    orientation(3) = Qw_;
+  };
+
+  double time_stamp;
+    // Orientation
+  // Take a vector from the world frame to
+  // the IMU (body) frame.
+  Eigen::Vector4d orientation;
+
+  // Position of the IMU (body) frame
+  // in the world frame.
+  Eigen::Vector3d position;
+};
+
+  // save the time cost of msckf
+  std::vector<timeLog> logTimeCost;
+  
+   void saveTimeLog(const std::string &filename) {
+
+    std::cout << std::endl << "Saving " << logTimeCost.size() << " records to time log file " << filename << " ..." << std::endl;
+
+    std::ofstream fFrameTimeLog;
+    fFrameTimeLog.open(filename.c_str());
+    fFrameTimeLog << std::fixed;
+    fFrameTimeLog << "#frame_time_stamp time_proc_1 time_proc_2" << std::endl;
+    for(size_t i=0; i<logTimeCost.size(); i++)
+    {
+        fFrameTimeLog << std::setprecision(6)
+                      << logTimeCost[i].time_stamp << " "
+                      << logTimeCost[i].time_cost_1 << " "
+                      << logTimeCost[i].time_cost_2 << std::endl;
+    }
+    fFrameTimeLog.close();
+
+    std::cout << "Finished saving log! " << std::endl;
+}
+
+//
+std::vector<trackLog> logFramePose;
+
+void saveAllFrameTrack(const std::string &filename) {
+  
+  std::cout << std::endl << "Saving " << logFramePose.size() << " records to track file " << filename << " ..." << std::endl;
+
+    std::ofstream f_realTimeTrack;
+    f_realTimeTrack.open(filename.c_str());
+    f_realTimeTrack << std::fixed;
+    f_realTimeTrack << "#TimeStamp Tx Ty Tz Qx Qy Qz Qw" << std::endl;
+    for(size_t i=0; i<logFramePose.size(); i++)
+    {
+      f_realTimeTrack << std::setprecision(6)
+			<< logFramePose[i].time_stamp << " "
+			<< std::setprecision(7)
+			<< logFramePose[i].position.transpose() << " "
+			<< logFramePose[i].orientation.transpose() << std::endl;
+    }
+    f_realTimeTrack.close();
+
+    std::cout << "Finished saving track! " << std::endl;
+}
+
+
+
 Estimator estimator;
 
 std::condition_variable con;
@@ -210,6 +299,7 @@ void process()
 {
     while (true)
     {
+      
         std::vector<std::pair<std::vector<sensor_msgs::ImuConstPtr>, sensor_msgs::PointCloudConstPtr>> measurements;
         std::unique_lock<std::mutex> lk(m_buf);
         con.wait(lk, [&]
@@ -221,6 +311,15 @@ void process()
         for (auto &measurement : measurements)
         {
             auto img_msg = measurement.second;
+	    
+	    
+      
+	// add by Yipu
+	double start_time = (double) cv::getTickCount();
+	double image_timestamp = img_msg->header.stamp.toSec();
+      
+	    
+	    
             double dx = 0, dy = 0, dz = 0, rx = 0, ry = 0, rz = 0;
             for (auto &imu_msg : measurement.first)
             {
@@ -272,6 +371,8 @@ void process()
             }
             if (relo_msg != NULL)
             {
+	      std::cout << "this should not happen!" << std::endl;
+	      
                 vector<Vector3d> match_points;
                 double frame_stamp = relo_msg->header.stamp.toSec();
                 for (unsigned int i = 0; i < relo_msg->points.size(); i++)
@@ -319,6 +420,22 @@ void process()
             header.frame_id = "world";
 
             pubOdometry(estimator, header);
+	    
+	    // add by Yipu
+	    if (estimator.solver_flag == Estimator::SolverFlag::NON_LINEAR) {
+		// save real-time published imu state for batch eval
+	      tmp_Q = Quaterniond(estimator.Rs[WINDOW_SIZE]);
+	      logFramePose.push_back( trackLog( header.stamp.toSec(), 
+					    estimator.Ps[WINDOW_SIZE].x(), 
+					    estimator.Ps[WINDOW_SIZE].y(),
+					    estimator.Ps[WINDOW_SIZE].z(),
+					    tmp_Q.x(),
+					    tmp_Q.y(),
+					    tmp_Q.z(),
+					    tmp_Q.w() ) );
+	    }
+	    
+	    /*
             pubKeyPoses(estimator, header);
             pubCameraPose(estimator, header);
             pubPointCloud(estimator, header);
@@ -326,7 +443,20 @@ void process()
             pubKeyframe(estimator);
             if (relo_msg != NULL)
                 pubRelocalization(estimator);
+	    */
             //ROS_ERROR("end: %f, at %f", img_msg->header.stamp.toSec(), ros::Time::now().toSec());
+	    
+	    
+	
+	      
+	// add by Yipu
+	double end_time = (double) cv::getTickCount();
+	double took_time = (end_time - start_time)/cv::getTickFrequency();
+	std::cout << "time cost per frame = " << took_time * 1000 << "              " << std::endl;
+	logTimeCost.push_back(timeLog(image_timestamp, 0, took_time));
+	
+	
+	
         }
         m_estimator.unlock();
         m_buf.lock();
@@ -335,6 +465,8 @@ void process()
             update();
         m_state.unlock();
         m_buf.unlock();
+   
+   
     }
 }
 
@@ -359,6 +491,14 @@ int main(int argc, char **argv)
 
     std::thread measurement_process{process};
     ros::spin();
+    
+    
+      // add by Yipu
+  std::cout << "terminated! saving the time cost log!" << std::endl;
+  saveTimeLog("/mnt/DATA/tmpLog.txt");
+  std::cout << "move on saving the track log!" << std::endl;
+  saveAllFrameTrack("/mnt/DATA/tmpTrack.txt");
+  
 
     return 0;
 }

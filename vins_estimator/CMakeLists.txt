@@ -15,10 +15,13 @@ find_package(catkin REQUIRED COMPONENTS
     cv_bridge
     )
 
+
+set(OpenCV_DIR /opt/opencv3/share/OpenCV)
 find_package(OpenCV REQUIRED)
 
-# message(WARNING "OpenCV_VERSION: ${OpenCV_VERSION}")
+message(WARNING "OpenCV_VERSION: ${OpenCV_VERSION}")
 
+set(Ceres_DIR /opt/ceres/lib/cmake/Ceres)
 find_package(Ceres REQUIRED)
 
 include_directories(${catkin_INCLUDE_DIRS} ${CERES_INCLUDE_DIRS})

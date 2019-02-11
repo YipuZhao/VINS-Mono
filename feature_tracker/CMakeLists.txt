@@ -13,12 +13,17 @@ find_package(catkin REQUIRED COMPONENTS
     camera_model
     )
 
+set(OpenCV_DIR /opt/opencv3/share/OpenCV)
 find_package(OpenCV REQUIRED)
+
+set(Ceres_DIR /opt/ceres/lib/cmake/Ceres)
+find_package(Ceres REQUIRED)
 
 catkin_package()
 
 include_directories(
     ${catkin_INCLUDE_DIRS}
+    ${CERES_INCLUDE_DIRS}
     )
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
@@ -26,6 +31,7 @@ find_package(Eigen3)
 include_directories(
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
+  ${CERES_INCLUDE_DIRS}
 )
 
 add_executable(feature_tracker
@@ -34,4 +40,4 @@ add_executable(feature_tracker
     src/feature_tracker.cpp
     )
 
-target_link_libraries(feature_tracker ${catkin_LIBRARIES} ${OpenCV_LIBS})
+target_link_libraries(feature_tracker ${catkin_LIBRARIES} ${OpenCV_LIBS} ${CERES_LIBRARIES})
